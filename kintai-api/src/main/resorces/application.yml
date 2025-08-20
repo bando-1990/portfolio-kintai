@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: kintai-api
+  datasource:
+    url: jdbc:postgresql://localhost:5432/attendance
+    username: app
+    password: secret
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+
+server:
+  port: 8080
+
+logging.level.org.flywaydb: INFO
