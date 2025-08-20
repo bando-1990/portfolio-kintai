@@ -340,3 +340,22 @@ components:
               NOT-404: 対象が存在しない
         message: { type: string }
         details: { type: object, additionalProperties: true, nullable: true }
+
+        # docs/openapi.yaml の抜粋
+components:
+  schemas:
+    ClockInRequest:
+      example: { "at": "2025-08-20T09:00:00Z", "note": "オフィス入場" }
+    AttendanceRecord:
+      example:
+        id: "7c7d9e5a-9c92-4f3e-9e2a-111111111111"
+        userId: "4fbf2a83-2a7a-4b42-a111-222222222222"
+        workDate: "2025-08-20"
+        clockInAt: "2025-08-20T00:00:00Z"
+        clockOutAt: "2025-08-20T09:00:00Z"
+        status: "COMPLETED"
+        grossWorkMinutes: 540
+        autoBreakMinutes: 60
+        netWorkMinutes: 480
+        calcPolicyCode: "FIXED_12-13@v1"
+
