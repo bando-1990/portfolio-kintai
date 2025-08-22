@@ -1,1 +1,8 @@
-/target/
+# Eclipse関連やビルド成果物を除外する .gitignore の例
+*.class
+*.jar
+*.war
+target/
+.settings/
+.project
+.classpath
