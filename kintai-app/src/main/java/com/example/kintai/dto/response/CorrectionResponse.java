@@ -12,6 +12,8 @@ public record CorrectionResponse(
     UUID approverId,
     String status,
     String reason,
+    OffsetDateTime requestedClockIn,
+    OffsetDateTime requestedClockOut,
     String reviewerComment,
     OffsetDateTime createdAt,
     OffsetDateTime decidedAt
@@ -24,6 +26,8 @@ public record CorrectionResponse(
             c.getApprover() != null ? c.getApprover().getId() : null,
             c.getStatus(),
             c.getReason(),
+            c.getRequestedClockIn(),
+            c.getRequestedClockOut(),
             c.getReviewerComment(),
             c.getCreatedAt(),
             c.getDecidedAt()

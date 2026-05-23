@@ -4,11 +4,16 @@ import { api } from "../api/client";
 const STATUS_LABEL = { pending: "申請中", approved: "承認済", rejected: "却下" };
 const STATUS_COLOR = { pending: "#d97706", approved: "#16a34a", rejected: "#dc2626" };
 
+function fmtTime(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function Corrections({ me }) {
   const [corrections, setCorrections] = useState([]);
   const [role, setRole] = useState("applicant");
   const [status, setStatus] = useState("");
-  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState({});
   const isManager = me?.roles?.includes("ADMIN") || me?.roles?.includes("MANAGER");
 
   const load = async () => {
@@ -19,14 +24,16 @@ export default function Corrections({ me }) {
   useEffect(() => { load(); }, [role, status]);
 
   const approve = async (id) => {
-    try { await api.approveCorrection(id, comment); await load(); setComment(""); }
+    try { await api.approveCorrection(id, comments[id] ?? ""); await load(); }
     catch (e) { alert(e.message); }
   };
 
   const reject = async (id) => {
-    try { await api.rejectCorrection(id, comment); await load(); setComment(""); }
+    try { await api.rejectCorrection(id, comments[id] ?? ""); await load(); }
     catch (e) { alert(e.message); }
   };
+
+  const setComment = (id, val) => setComments((prev) => ({ ...prev, [id]: val }));
 
   return (
     <div className="page">
@@ -55,17 +62,28 @@ export default function Corrections({ me }) {
             <span className="badge" style={{ background: STATUS_COLOR[c.status] }}>
               {STATUS_LABEL[c.status] ?? c.status}
             </span>
-            <span className="date">{c.createdAt?.slice(0, 10)}</span>
+            <span className="date">申請日: {c.createdAt?.slice(0, 10)}</span>
           </div>
+
+          {/* 希望時刻 */}
+          {(c.requestedClockIn || c.requestedClockOut) && (
+            <div className="time-change">
+              <span>希望時刻：</span>
+              {c.requestedClockIn && <span>出勤 <strong>{fmtTime(c.requestedClockIn)}</strong></span>}
+              {c.requestedClockOut && <span>退勤 <strong>{fmtTime(c.requestedClockOut)}</strong></span>}
+            </div>
+          )}
+
           <p><strong>理由：</strong>{c.reason}</p>
-          {c.reviewerComment && <p><strong>コメント：</strong>{c.reviewerComment}</p>}
+          {c.reviewerComment && <p><strong>承認者コメント：</strong>{c.reviewerComment}</p>}
+          {c.decidedAt && <p className="decided-at">処理日: {c.decidedAt.slice(0, 10)}</p>}
 
           {isManager && c.status === "pending" && role === "approver" && (
             <div className="approval-row">
               <input
                 placeholder="コメント（任意）"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                value={comments[c.id] ?? ""}
+                onChange={(e) => setComment(c.id, e.target.value)}
               />
               <button className="btn-approve" onClick={() => approve(c.id)}>承認</button>
               <button className="btn-reject" onClick={() => reject(c.id)}>却下</button>

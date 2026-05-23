@@ -37,6 +37,12 @@ public class AttendanceCorrection {
     @Column(name = "reason", nullable = false)
     private String reason;
 
+    @Column(name = "requested_clock_in")
+    private OffsetDateTime requestedClockIn;
+
+    @Column(name = "requested_clock_out")
+    private OffsetDateTime requestedClockOut;
+
     @Column(name = "reviewer_comment")
     private String reviewerComment;
 

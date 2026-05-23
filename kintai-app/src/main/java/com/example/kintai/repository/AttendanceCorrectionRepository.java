@@ -22,4 +22,9 @@ public interface AttendanceCorrectionRepository extends JpaRepository<Attendance
 
     @Query("SELECT c FROM AttendanceCorrection c WHERE c.approver.id = :userId AND c.status = :status ORDER BY c.createdAt DESC")
     List<AttendanceCorrection> findByApproverIdAndStatus(@Param("userId") UUID userId, @Param("status") String status);
+
+    // 承認者向け：全件（pendingは approver 未設定のため applicant 絞りなし）
+    List<AttendanceCorrection> findAllByOrderByCreatedAtDesc();
+
+    List<AttendanceCorrection> findByStatusOrderByCreatedAtDesc(String status);
 }

@@ -52,8 +52,8 @@ export const api = {
     if (status) params.append("status", status);
     return request("GET", `/attendance/corrections?${params}`);
   },
-  createCorrection: (recordId, reason) =>
-    request("POST", "/attendance/corrections", { recordId, reason }),
+  createCorrection: (recordId, reason, requestedClockIn, requestedClockOut) =>
+    request("POST", "/attendance/corrections", { recordId, reason, requestedClockIn, requestedClockOut }),
   approveCorrection: (id, comment) =>
     request("POST", `/attendance/corrections/${id}/approve`, { comment }),
   rejectCorrection: (id, comment) =>

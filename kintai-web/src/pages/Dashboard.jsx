@@ -10,13 +10,31 @@ function toToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// "HH:MM" を今日の日付の ISO8601 文字列に変換
+function timeToIso(timeStr, baseDate) {
+  if (!timeStr) return null;
+  return `${baseDate}T${timeStr}:00+09:00`;
+}
+
+// input[type="time"] 用に HH:MM 形式（24時間）を返す
+function toTimeInput(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function Dashboard() {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [corrForm, setCorrForm] = useState({ clockIn: "", clockOut: "", reason: "" });
+  const [corrMsg, setCorrMsg] = useState("");
+  const [corrLoading, setCorrLoading] = useState(false);
+
+  const today = toToday();
 
   useEffect(() => {
-    const today = toToday();
     api.getRecords(today, today)
       .then((list) => setRecord(list[0] ?? null))
       .catch(() => {});
@@ -40,6 +58,32 @@ export default function Dashboard() {
       setMsg("退勤打刻しました");
     } catch (e) { setMsg(e.message); }
     finally { setLoading(false); }
+  };
+
+  const openModal = () => {
+    setCorrForm({
+      clockIn: toTimeInput(record?.clockInAt),
+      clockOut: toTimeInput(record?.clockOutAt),
+      reason: "",
+    });
+    setCorrMsg("");
+    setShowModal(true);
+  };
+
+  const submitCorrection = async () => {
+    if (!corrForm.reason.trim()) { setCorrMsg("修正理由を入力してください"); return; }
+    setCorrLoading(true); setCorrMsg("");
+    try {
+      await api.createCorrection(
+        record.id,
+        corrForm.reason,
+        corrForm.clockIn ? timeToIso(corrForm.clockIn, today) : null,
+        corrForm.clockOut ? timeToIso(corrForm.clockOut, today) : null,
+      );
+      setCorrMsg("修正申請を送信しました");
+      setTimeout(() => setShowModal(false), 1200);
+    } catch (e) { setCorrMsg(e.message); }
+    finally { setCorrLoading(false); }
   };
 
   const status = record?.status ?? "NOT_STARTED";
@@ -79,7 +123,57 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {record && (
+        <div className="correction-link">
+          <button className="btn-text" onClick={openModal}>時刻の修正を申請する</button>
+        </div>
+      )}
+
       {msg && <p className="msg">{msg}</p>}
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>時刻修正申請</h3>
+            <p className="modal-note">修正したい時刻を入力してください（変更しない項目は空白のままで可）</p>
+
+            <div className="form-group">
+              <label>出勤時刻</label>
+              <input
+                type="time"
+                value={corrForm.clockIn}
+                onChange={(e) => setCorrForm({ ...corrForm, clockIn: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>退勤時刻</label>
+              <input
+                type="time"
+                value={corrForm.clockOut}
+                onChange={(e) => setCorrForm({ ...corrForm, clockOut: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>修正理由 <span className="required">*</span></label>
+              <textarea
+                rows={3}
+                placeholder="例：打刻ミスのため"
+                value={corrForm.reason}
+                onChange={(e) => setCorrForm({ ...corrForm, reason: e.target.value })}
+              />
+            </div>
+
+            {corrMsg && <p className={corrMsg.includes("送信") ? "msg success" : "msg error"}>{corrMsg}</p>}
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowModal(false)}>キャンセル</button>
+              <button className="btn-primary" onClick={submitCorrection} disabled={corrLoading}>
+                {corrLoading ? "送信中..." : "申請する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
