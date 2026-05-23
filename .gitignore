@@ -1,0 +1,23 @@
+# Eclipse workspace / WTP
+/.metadata/
+/Servers/
+/.recommenders/
+*.launch
+
+# IDE 共通
+.project
+.classpath
+.settings/
+.factorypath
+.vscode/
+.idea/
+*.iml
+
+# ビルド成果物
+target/
+bin/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
