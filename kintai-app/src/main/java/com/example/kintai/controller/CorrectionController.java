@@ -6,12 +6,12 @@ import com.example.kintai.dto.response.CorrectionResponse;
 import com.example.kintai.service.CorrectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 /** 修正申請エンドポイント */
@@ -31,12 +31,14 @@ public class CorrectionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CorrectionResponse>> list(
+    public ResponseEntity<Page<CorrectionResponse>> list(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "applicant") String role,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         UUID userId = UUID.fromString(userDetails.getUsername());
-        return ResponseEntity.ok(correctionService.listCorrections(userId, role, status));
+        return ResponseEntity.ok(correctionService.listCorrections(userId, role, status, page, size));
     }
 
     @PostMapping("/{id}/approve")

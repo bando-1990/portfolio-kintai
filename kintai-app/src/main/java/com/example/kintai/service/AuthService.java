@@ -5,12 +5,14 @@ import com.example.kintai.dto.response.LoginResponse;
 import com.example.kintai.repository.UserRepository;
 import com.example.kintai.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 認証サービス */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -21,15 +23,22 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        var user = userRepository.findByLoginId(request.loginId())
-                .filter(u -> u.getActive())
-                .orElseThrow(() -> new BadCredentialsException("認証情報が正しくありません"));
+        try {
+            var user = userRepository.findByLoginId(request.loginId())
+                    .filter(u -> u.getActive())
+                    .orElseThrow(() -> new BadCredentialsException("認証情報が正しくありません"));
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new BadCredentialsException("認証情報が正しくありません");
+            if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                throw new BadCredentialsException("認証情報が正しくありません");
+            }
+
+            String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId());
+            log.info("ログイン成功: loginId={}", request.loginId());
+            return new LoginResponse(token, jwtTokenProvider.getExpirationMs() / 1000);
+
+        } catch (BadCredentialsException e) {
+            log.warn("ログイン失敗: loginId={}", request.loginId());
+            throw e;
         }
-
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getLoginId());
-        return new LoginResponse(token, jwtTokenProvider.getExpirationMs() / 1000);
     }
 }

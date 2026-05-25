@@ -1,0 +1,205 @@
+============================================================
+  勤怠管理アプリ ディレクトリ構造
+  最終更新: 2026-05-25
+============================================================
+
+portfolio-kintai-1/
+├── docker-compose.yml         ← 1コマンドで全サービス起動（NEW）
+├── ディレクトリ構造.txt        ← このファイル
+├── kintai-app/                ← バックエンド（Spring Boot / Java）
+├── kintai-web/                ← フロントエンド（React / JavaScript）
+└── kintai-infra/local/        ← 旧: DBのみのDocker設定（現在は未使用）
+
+
+============================================================
+  【起動方法】
+============================================================
+
+■ 全サービスまとめて起動（推奨）
+  cd C:\Users\bando\OneDrive\Desktop\portfolio-kintai-1
+  docker compose up
+
+  ※ 初回は依存ライブラリのダウンロードがあるため 10〜15 分かかる
+  ※ 2回目以降はキャッシュが効くため数分で起動
+
+■ バックグラウンドで起動
+  docker compose up -d
+
+■ 停止
+  docker compose down
+
+■ Javaコード変更後の再起動
+  docker compose restart backend
+
+■ ブラウザでのアクセス先
+  フロントエンド: http://localhost:5173
+  バックエンドAPI: http://localhost:8080
+
+------------------------------------------------------------
+  旧起動方法（個別起動 / 現在は非推奨）
+------------------------------------------------------------
+  docker start kintai-postgres
+  cd kintai-app && .\mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"
+  cd kintai-web && npm run dev
+
+
+============================================================
+  【3層アーキテクチャとDockerの対応】
+============================================================
+
+  フロントエンド層  →  kintai-frontend コンテナ（port: 5173）
+  アプリケーション層 →  kintai-backend コンテナ（port: 8080）
+  データベース層    →  kintai-postgres コンテナ（port: 5432）
+
+  ※ 本番デプロイ時は以下に置き換わる
+     フロントエンド  → Azure Static Web Apps または Render
+     バックエンド   → Azure App Service または Render（Dockerイメージで動く）
+     DB           → Neon（無料クラウドPostgreSQL）
+
+
+============================================================
+  【フロントエンド層】 kintai-web/
+============================================================
+
+kintai-web/
+├── Dockerfile             ← 開発・本番ビルド両対応（NEW）
+├── .dockerignore          ← Dockerビルド除外設定（NEW）
+├── vite.config.js         ← Vite設定（Docker対応済み）
+├── package.json           ← 依存パッケージ定義
+└── src/
+    ├── main.jsx               アプリの起動エントリポイント
+    ├── App.jsx                画面切り替え・ログイン状態管理
+    ├── App.css                全体のスタイル定義
+    ├── api/
+    │   └── client.js          ★ Spring Boot への HTTP 通信をまとめた場所
+    └── pages/                 各画面コンポーネント
+        ├── Login.jsx              ログイン画面
+        ├── ForgotPassword.jsx     パスワードリセット申請画面
+        ├── ResetPassword.jsx      新パスワード設定画面
+        ├── Dashboard.jsx          打刻画面（出勤・退勤ボタン）
+        ├── Records.jsx            勤怠レコード一覧・CSV出力
+        ├── Corrections.jsx        修正申請一覧・承認
+        ├── Users.jsx              ユーザー管理（管理者のみ）
+        └── MyProfile.jsx          プロフィール設定（メール・PW変更）
+
+
+============================================================
+  【アプリケーション層】 kintai-app/
+============================================================
+
+kintai-app/
+├── Dockerfile             ← 開発・本番ビルド両対応（NEW）
+├── .dockerignore          ← Dockerビルド除外設定（NEW）
+├── pom.xml                ← Mavenビルド設定・依存ライブラリ定義
+└── src/main/java/com/example/kintai/
+
+Spring Boot 内部は 4 層構造になっている。
+
+├── controller/            ① HTTP リクエストの受け口
+│   ├── AttendanceController.java     打刻・レコード・CSV出力
+│   ├── CorrectionController.java     修正申請
+│   ├── UserController.java           ユーザー管理・全件取得
+│   ├── AuthController.java           ログイン
+│   ├── PasswordResetController.java  パスワードリセット
+│   └── ReportController.java         レポート
+│
+├── service/               ② ビジネスロジック（処理の本体）
+│   ├── AttendanceService.java        打刻計算・CSV生成
+│   ├── CorrectionService.java        申請の承認・却下ロジック
+│   ├── UserService.java              ユーザー作成・CSV一括登録・全件取得
+│   ├── AuthService.java              ログイン認証
+│   └── PasswordResetService.java     トークン生成・メール送信
+│
+├── repository/            ③ DB へのアクセス（SQL の代わり）
+│   ├── AttendanceRecordRepository.java   （CSV出力用JOINクエリ含む）
+│   ├── AttendanceCorrectionRepository.java
+│   ├── UserRepository.java               （全件取得クエリ含む）
+│   └── PasswordResetTokenRepository.java
+│
+├── entity/                ④ DB テーブルと対応する Java クラス
+│   ├── AttendanceRecord.java       → attendance_records テーブル
+│   ├── AttendanceCorrection.java   → attendance_corrections テーブル
+│   ├── User.java                   → users テーブル
+│   └── PasswordResetToken.java     → password_reset_tokens テーブル
+│
+├── dto/                   リクエスト・レスポンスのデータ形定義
+│   ├── request/               フロントから受け取るデータの型
+│   └── response/              フロントへ返すデータの型
+│
+├── config/                セキュリティ設定（JWT認証の設定）
+├── security/              JWT トークンの生成・検証
+└── exception/             エラーハンドリング（共通エラー形式）
+
+
+============================================================
+  【データベース層】 kintai-app/src/main/resources/db/migration/
+============================================================
+
+Flyway によって管理。Spring Boot 起動時に未適用ファイルが自動実行される。
+
+├── V1__init.sql                       テーブル作成
+│                                      (users, attendance_records 等)
+├── V2__insert_roles.sql               初期データ投入
+│                                      (ADMIN, MANAGER, MEMBER ロール)
+├── V3__add_correction_time_fields.sql 修正申請に希望時刻カラム追加
+├── V4__add_password_reset_tokens.sql  パスワードリセットトークンテーブル追加
+└── V5__add_unique_email.sql           メールアドレスのユニーク制約追加
+
+
+============================================================
+  【設定ファイル】 kintai-app/src/main/resources/
+============================================================
+
+├── application.properties         共通設定（ページサイズ等）
+├── application-dev.properties     開発環境設定（DB接続・Gmail SMTP）
+├── application-prod.properties    本番環境設定
+└── logback-spring.xml             ログ出力設定（日次ローテーション）
+
+※ Docker起動時はdocker-compose.ymlの environment で
+  SPRING_DATASOURCE_URL を db:5432 に上書きするため
+  application-dev.properties の localhost 設定はそのまま残す
+
+
+============================================================
+  【1リクエストの流れ】例：出勤ボタンをクリック
+============================================================
+
+ブラウザで「出勤」ボタンをクリック
+  ↓
+client.js（フロント）        POST /attendance/clock-in を送信
+  ↓
+AttendanceController         リクエスト受付・JWT 認証確認
+  ↓
+AttendanceService            重複チェック・時刻記録・休憩計算
+  ↓
+AttendanceRecordRepository   DB に INSERT
+  ↓
+PostgreSQL                   attendance_records テーブルに保存
+  ↓（レスポンスが逆順で戻る）
+Dashboard.jsx                時刻を画面に表示
+
+
+============================================================
+  【DBeaver 接続設定】
+============================================================
+
+  Host:     localhost
+  Port:     5432
+  Database: kintai
+  User:     kintai
+  Password: kintai
+
+
+============================================================
+  【本番デプロイ構成（予定）】
+============================================================
+
+  フロントエンド  → Azure Static Web Apps（無料）または Render
+  バックエンド   → Azure App Service（Dockerfile の production ステージ使用）
+  DB           → Neon（無料クラウドPostgreSQL）
+
+  デプロイ時の変更点:
+    application-prod.properties の DB接続先を Neon の URL に設定
+    docker-compose.yml の本番用オーバーライドを作成
+
+============================================================

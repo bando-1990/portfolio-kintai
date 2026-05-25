@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onForgotPassword }) {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,6 +36,11 @@ export default function Login({ onLogin }) {
             {loading ? "ログイン中..." : "ログイン"}
           </button>
         </form>
+        <div style={{ textAlign: "center", marginTop: "16px" }}>
+          <button className="btn-text" onClick={onForgotPassword}>
+            パスワードをお忘れの方はこちら
+          </button>
+        </div>
       </div>
     </div>
   );

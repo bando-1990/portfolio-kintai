@@ -1,0 +1,56 @@
+services:
+
+  # データベース層
+  db:
+    image: postgres:16
+    container_name: kintai-postgres
+    environment:
+      POSTGRES_DB: kintai
+      POSTGRES_USER: kintai
+      POSTGRES_PASSWORD: kintai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kintai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # アプリケーション層（Spring Boot）
+  backend:
+    build:
+      context: ./kintai-app
+      target: development
+    container_name: kintai-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./kintai-app/src:/app/src        # ソースをマウント（コード変更を反映）
+      - maven_repo:/root/.m2             # Mavenキャッシュ（初回以降の起動を高速化）
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/kintai
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # フロントエンド層（React + Vite）
+  frontend:
+    build:
+      context: ./kintai-web
+      target: development
+    container_name: kintai-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./kintai-web/src:/app/src              # srcをマウント（ホットリロード対応）
+      - ./kintai-web/index.html:/app/index.html
+      - ./kintai-web/vite.config.js:/app/vite.config.js
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  maven_repo:

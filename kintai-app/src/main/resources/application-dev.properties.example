@@ -1,0 +1,24 @@
+# 開発環境設定テンプレート
+# このファイルをコピーして application-dev.properties を作成してください
+# cp application-dev.properties.example application-dev.properties
+
+# DB接続（Dockerのkintai-postgresコンテナ）
+spring.datasource.url=jdbc:postgresql://localhost:5432/kintai
+spring.datasource.username=kintai
+spring.datasource.password=kintai
+
+# JWT設定（開発用）
+jwt.secret=dev-secret-key-must-be-at-least-32-chars-long
+jwt.expiration-ms=86400000
+
+# メール送信設定（Gmail）
+# Googleアカウント → セキュリティ → アプリパスワードで発行した16文字のパスワードを設定
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-gmail-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# フロントエンドURL（メール内のリセットリンク生成に使用）
+app.frontend-url=http://localhost:5173

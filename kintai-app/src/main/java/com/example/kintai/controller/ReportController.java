@@ -24,9 +24,16 @@ public class ReportController {
     @GetMapping("/summary/daily")
     public ResponseEntity<List<DailySummaryResponse>> getDailySummary(
             @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) UUID userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        UUID userId = UUID.fromString(userDetails.getUsername());
-        return ResponseEntity.ok(reportService.getDailySummary(userId, from, to));
+
+        UUID requesterId = UUID.fromString(userDetails.getUsername());
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        // ADMIN のみ任意ユーザーのデータを取得可能
+        UUID targetId = (isAdmin && userId != null) ? userId : requesterId;
+        return ResponseEntity.ok(reportService.getDailySummary(targetId, from, to));
     }
 }

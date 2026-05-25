@@ -1,11 +1,12 @@
 /* レイアウト */
-.layout { display: flex; min-height: 100vh; }
+.layout { display: flex; height: 100vh; overflow: hidden; }
 
 .sidebar {
-  width: 200px; min-height: 100vh;
+  width: 200px; height: 100vh;
   background: #1e293b; color: #e2e8f0;
   display: flex; flex-direction: column;
   padding: 0; flex-shrink: 0;
+  overflow-y: auto;
 }
 .app-title {
   padding: 20px 16px; font-size: 16px;
@@ -43,16 +44,21 @@
 .login-card button:hover { background: #2563eb; }
 
 /* ダッシュボード */
+.realtime-clock { font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 16px; letter-spacing: 0.02em; }
 .status-badge { display: inline-block; padding: 6px 16px; border-radius: 99px; color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
 .time-row { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
 .time-box { background: #fff; border-radius: 10px; padding: 16px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); min-width: 120px; }
 .time-box span { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
 .time-box strong { font-size: 22px; color: #1e293b; }
 .btn-row { display: flex; gap: 12px; margin-bottom: 16px; }
-.btn-clock { padding: 14px 36px; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+.btn-clock { padding: 14px 36px; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, background 0.15s; outline: none; -webkit-appearance: none; appearance: none; }
+.btn-clock:focus { outline: none; box-shadow: none; }
+.btn-clock:active { transform: none; box-shadow: none; }
 .btn-clock:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-clock.in  { background: #16a34a; color: #fff; }
+.btn-clock.in:hover:not(:disabled)  { background: #15803d; }
 .btn-clock.out { background: #2563eb; color: #fff; }
+.btn-clock.out:hover:not(:disabled) { background: #1d4ed8; }
 .msg { margin-top: 8px; color: #16a34a; font-weight: 600; }
 
 /* テーブル・フィルター */
@@ -83,6 +89,11 @@
 .user-form button { padding: 10px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
 .btn-sm { padding: 4px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
 .btn-sm.danger { background: #fee2e2; color: #dc2626; }
+.btn-delete-selected { padding: 8px 16px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-delete-selected:hover { background: #b91c1c; }
+.row-inactive td { color: #9ca3af; }
+.status-select { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; cursor: pointer; background: #fff; }
+.tbl td input[type="checkbox"], .tbl th input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
 
 /* 修正申請リンク */
 .correction-link { margin-top: 4px; }
@@ -128,6 +139,37 @@
 .btn-secondary:hover { background: #e2e8f0; }
 .msg.success { color: #16a34a; }
 .msg.error { color: #dc2626; }
+
+/* プロフィール設定 */
+.profile-section { background: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-width: 480px; }
+.profile-section h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+.profile-note { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
+.profile-form { display: flex; flex-direction: column; gap: 4px; }
+.profile-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* ページネーション */
+.pagination { display: flex; align-items: center; gap: 12px; margin-top: 20px; justify-content: center; }
+.page-btn { padding: 8px 18px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.page-btn:hover:not(:disabled) { background: #2563eb; }
+.page-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+.page-info { font-size: 14px; color: #374151; }
+
+/* CSV出力セクション */
+.export-section { margin-top: 32px; padding: 20px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; }
+.export-section h3 { font-size: 15px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+
+/* 修正申請ボタン（テーブル内小ボタン） */
+.btn-text.small { font-size: 12px; padding: 2px 0; }
+
+/* レポート */
+.report-total td { font-weight: 700; background: #f8fafc; border-top: 2px solid #e5e7eb; }
+
+/* CSVインポート結果 */
+.import-result { padding: 14px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+.import-result.success { background: #f0fdf4; border: 1px solid #86efac; }
+.import-result.has-error { background: #fff7ed; border: 1px solid #fdba74; }
+.import-note { color: #6b7280; font-size: 13px; margin-top: 4px; }
+.import-errors { margin-top: 8px; padding-left: 18px; color: #dc2626; font-size: 13px; }
 
 /* 共通 */
 .error { color: #dc2626; font-size: 13px; }

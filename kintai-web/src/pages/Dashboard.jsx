@@ -7,7 +7,8 @@ function fmt(dt) {
 }
 
 function toToday() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // "HH:MM" を今日の日付の ISO8601 文字列に変換
@@ -31,8 +32,14 @@ export default function Dashboard() {
   const [corrForm, setCorrForm] = useState({ clockIn: "", clockOut: "", reason: "" });
   const [corrMsg, setCorrMsg] = useState("");
   const [corrLoading, setCorrLoading] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const today = toToday();
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     api.getRecords(today, today)
@@ -86,6 +93,7 @@ export default function Dashboard() {
     finally { setCorrLoading(false); }
   };
 
+  const now = new Date();
   const status = record?.status ?? "NOT_STARTED";
   const statusLabel = { NOT_STARTED: "未出勤", WORKING: "出勤中", COMPLETED: "退勤済" }[status];
   const statusColor = { NOT_STARTED: "#6b7280", WORKING: "#16a34a", COMPLETED: "#2563eb" }[status];
@@ -93,6 +101,10 @@ export default function Dashboard() {
   return (
     <div className="page">
       <h2>今日の打刻</h2>
+      <div className="realtime-clock" translate="no">
+        <span>{now.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}</span>
+        <span style={{ marginLeft: "16px" }}>{now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+      </div>
       <div className="status-badge" style={{ background: statusColor }}>{statusLabel}</div>
 
       <div className="time-row">

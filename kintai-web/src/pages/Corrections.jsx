@@ -11,25 +11,40 @@ function fmtTime(iso) {
 
 export default function Corrections({ me }) {
   const [corrections, setCorrections] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [role, setRole] = useState("applicant");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("pending");
+  const [page, setPage] = useState(0);
   const [comments, setComments] = useState({});
   const isManager = me?.roles?.includes("ADMIN") || me?.roles?.includes("MANAGER");
+  const PAGE_SIZE = 10;
 
-  const load = async () => {
-    try { setCorrections(await api.getCorrections(role, status || undefined)); }
-    catch (e) { alert(e.message); }
+  const load = async (r, s, p) => {
+    try {
+      const res = await api.getCorrections(r, s || undefined, p, PAGE_SIZE);
+      setCorrections(res.content ?? []);
+      setTotalPages(res.totalPages ?? 0);
+      setTotalElements(res.totalElements ?? 0);
+    } catch (e) { alert(e.message); }
   };
 
-  useEffect(() => { load(); }, [role, status]);
+  useEffect(() => {
+    setPage(0);
+    load(role, status, 0);
+  }, [role, status]);
+
+  useEffect(() => {
+    load(role, status, page);
+  }, [page]);
 
   const approve = async (id) => {
-    try { await api.approveCorrection(id, comments[id] ?? ""); await load(); }
+    try { await api.approveCorrection(id, comments[id] ?? ""); await load(role, status, page); }
     catch (e) { alert(e.message); }
   };
 
   const reject = async (id) => {
-    try { await api.rejectCorrection(id, comments[id] ?? ""); await load(); }
+    try { await api.rejectCorrection(id, comments[id] ?? ""); await load(role, status, page); }
     catch (e) { alert(e.message); }
   };
 
@@ -51,7 +66,7 @@ export default function Corrections({ me }) {
           <option value="approved">承認済</option>
           <option value="rejected">却下</option>
         </select>
-        <button onClick={load}>更新</button>
+        <button onClick={() => load(role, status, page)}>更新</button>
       </div>
 
       {corrections.length === 0 ? (
@@ -91,6 +106,29 @@ export default function Corrections({ me }) {
           )}
         </div>
       ))}
+
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="page-btn"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            前へ
+          </button>
+          <span className="page-info">
+            {page + 1} / {totalPages} ページ（全{totalElements}件）
+          </span>
+          <button
+            className="page-btn"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+          >
+            次へ
+          </button>
+        </div>
+      )}
     </div>
   );
 }

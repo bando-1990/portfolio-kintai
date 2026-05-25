@@ -10,18 +10,23 @@ import com.example.kintai.repository.AttendanceRecordRepository;
 import com.example.kintai.repository.IdempotencyKeyRepository;
 import com.example.kintai.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
 /** 勤怠打刻サービス */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
@@ -67,6 +72,7 @@ public class AttendanceService {
                 .createdAt(now)
                 .build());
 
+        log.info("出勤打刻: userId={}, workDate={}", userId, workDate);
         return AttendanceRecordResponse.from(record);
     }
 
@@ -93,6 +99,7 @@ public class AttendanceService {
         record.setCalcAt(now);
         record.setUpdatedAt(now);
 
+        log.info("退勤打刻: userId={}, workDate={}, 実働={}分", userId, workDate, record.getNetWorkMinutes());
         return AttendanceRecordResponse.from(recordRepository.save(record));
     }
 
@@ -103,5 +110,78 @@ public class AttendanceService {
                 .stream()
                 .map(AttendanceRecordResponse::from)
                 .toList();
+    }
+
+    /**
+     * 勤怠レコードをUTF-8 BOM付きCSVとして出力する。
+     * isAdmin=true かつ targetUserId=null の場合は全ユーザー分を出力。
+     */
+    @Transactional(readOnly = true)
+    public byte[] exportCsv(UUID requesterId, boolean isAdmin, Integer year, Integer month, UUID targetUserId) {
+        LocalDate from;
+        LocalDate to;
+        if (month != null) {
+            from = LocalDate.of(year, month, 1);
+            to = from.withDayOfMonth(from.lengthOfMonth());
+        } else {
+            from = LocalDate.of(year, 1, 1);
+            to = LocalDate.of(year, 12, 31);
+        }
+
+        List<AttendanceRecord> records;
+        if (isAdmin && targetUserId == null) {
+            records = recordRepository.findAllByWorkDateBetweenFetchUser(from, to);
+        } else {
+            UUID uid = (isAdmin && targetUserId != null) ? targetUserId : requesterId;
+            records = recordRepository.findByUserIdAndWorkDateBetweenFetchUser(uid, from, to);
+        }
+
+        var sb = new StringBuilder();
+        sb.append('﻿'); // UTF-8 BOM（Excel での文字化け防止）
+        sb.append("社員ID,氏名,日付,出勤,退勤,総労働(h),休憩控除(h),実働(h),状態\r\n");
+
+        for (var r : records) {
+            sb.append(escapeCsv(r.getUser().getLoginId())).append(',');
+            sb.append(escapeCsv(r.getUser().getName())).append(',');
+            sb.append(r.getWorkDate()).append(',');
+            sb.append(fmtTimeCsv(r.getClockInAt())).append(',');
+            sb.append(fmtTimeCsv(r.getClockOutAt())).append(',');
+            sb.append(minutesToDecimalHours(r.getGrossWorkMinutes())).append(',');
+            sb.append(minutesToDecimalHours(r.getAutoBreakMinutes())).append(',');
+            sb.append(minutesToDecimalHours(r.getNetWorkMinutes())).append(',');
+            sb.append(statusLabel(r.getStatus())).append("\r\n");
+        }
+
+        log.info("CSV出力: userId={}, year={}, month={}, targetUserId={}, 件数={}",
+                requesterId, year, month, targetUserId, records.size());
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String fmtTimeCsv(OffsetDateTime dt) {
+        if (dt == null) return "";
+        return dt.atZoneSameInstant(ZoneId.of("Asia/Tokyo"))
+                 .format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    private String minutesToDecimalHours(Integer minutes) {
+        if (minutes == null) return "";
+        return String.format("%.2f", minutes / 60.0);
+    }
+
+    private String statusLabel(AttendanceStatus status) {
+        if (status == null) return "";
+        return switch (status) {
+            case NOT_STARTED -> "未出勤";
+            case WORKING     -> "出勤中";
+            case COMPLETED   -> "退勤済";
+        };
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

@@ -13,6 +13,8 @@ public record AttendanceRecordResponse(
     OffsetDateTime clockInAt,
     OffsetDateTime clockOutAt,
     String status,
+    Integer grossWorkMinutes,
+    Integer autoBreakMinutes,
     Integer netWorkMinutes
 ) {
     public static AttendanceRecordResponse from(AttendanceRecord r) {
@@ -23,6 +25,8 @@ public record AttendanceRecordResponse(
             r.getClockInAt(),
             r.getClockOutAt(),
             r.getStatus().name(),
+            r.getGrossWorkMinutes(),
+            r.getAutoBreakMinutes(),
             r.getNetWorkMinutes()
         );
     }

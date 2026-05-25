@@ -9,6 +9,9 @@ import com.example.kintai.repository.AttendanceCorrectionRepository;
 import com.example.kintai.repository.AttendanceRecordRepository;
 import com.example.kintai.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
+
 /** 修正申請サービス */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CorrectionService {
@@ -46,23 +50,25 @@ public class CorrectionService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
+        log.info("修正申請作成: applicantId={}, recordId={}", applicantId, request.recordId());
         return CorrectionResponse.from(correctionRepository.save(correction));
     }
 
     @Transactional(readOnly = true)
-    public List<CorrectionResponse> listCorrections(UUID userId, String role, String status) {
-        List<AttendanceCorrection> list;
+    public Page<CorrectionResponse> listCorrections(UUID userId, String role, String status, int page, int size) {
+        var pageable = PageRequest.of(page, size);
+        Page<AttendanceCorrection> result;
         if ("applicant".equals(role)) {
-            list = status != null
-                    ? correctionRepository.findByApplicantIdAndStatus(userId, status)
-                    : correctionRepository.findByApplicantIdOrderByCreatedAtDesc(userId);
+            result = status != null
+                    ? correctionRepository.findByApplicantIdAndStatus(userId, status, pageable)
+                    : correctionRepository.findByApplicantIdOrderByCreatedAtDesc(userId, pageable);
         } else {
             // 承認者ロールは全申請を返す（pending申請は approver 未設定のため全件クエリ）
-            list = status != null
-                    ? correctionRepository.findByStatusOrderByCreatedAtDesc(status)
-                    : correctionRepository.findAllByOrderByCreatedAtDesc();
+            result = status != null
+                    ? correctionRepository.findByStatusOrderByCreatedAtDesc(status, pageable)
+                    : correctionRepository.findAllByOrderByCreatedAtDesc(pageable);
         }
-        return list.stream().map(CorrectionResponse::from).toList();
+        return result.map(CorrectionResponse::from);
     }
 
     @Transactional
@@ -96,6 +102,7 @@ public class CorrectionService {
         record.setUpdatedAt(OffsetDateTime.now());
         recordRepository.save(record);
 
+        log.info("修正申請承認: correctionId={}, approverId={}", correctionId, approverId);
         return CorrectionResponse.from(correctionRepository.save(correction));
     }
 
@@ -110,6 +117,7 @@ public class CorrectionService {
         correction.setReviewerComment(request.comment());
         correction.setDecidedAt(OffsetDateTime.now());
 
+        log.info("修正申請却下: correctionId={}, approverId={}", correctionId, approverId);
         return CorrectionResponse.from(correctionRepository.save(correction));
     }
 
